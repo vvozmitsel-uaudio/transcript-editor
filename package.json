@@ -1,0 +1,25 @@
+{
+  "name": "transcript_editor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "LUNA Add On: edit dialogue by editing text, with Deepgram transcription",
+  "scripts": {
+    "build": "tsc && vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "serve": "ua-builder serve",
+    "install-addon": "npm run build && ua-builder install",
+    "pack": "npm run build && ua-builder pack",
+    "test:page": "npm run build && ua-builder probe http://localhost:8790/ --mock tests/probe/fixture.js --timeout 30000 --expr \"$(cat tests/probe/e2e.js)\""
+  },
+  "devDependencies": {
+    "@uaudio/luna-builder-sdk": "file:../../../Library/Application Support/LUNA Builder SDK",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  },
+  "license": "Apache-2.0"
+}

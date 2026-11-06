@@ -1,0 +1,15 @@
+Transcript Editor, a LUNA Add On
+Copyright 2026 vvozmitsel
+
+This product is licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+Release builds (.lunaaddon) include the LUNA Builder SDK script bundle
+(vendor/luna.global.js):
+  @uaudio/luna-builder-sdk
+  Copyright 2026 Universal Audio, Inc.
+  Licensed under the Apache License, Version 2.0.
+
+Transcript Editor is a community project, not affiliated with or endorsed by
+Universal Audio, Inc. or Deepgram. LUNA is a trademark of Universal Audio, Inc.
+Deepgram is a trademark of Deepgram, Inc. Transcription is provided by Deepgram
+under your own Deepgram account and its terms.

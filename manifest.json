@@ -1,0 +1,13 @@
+{
+    "package_name": "Transcript Editor",
+    "id": "com.vvozmitsel.transcript_editor",
+    "title": "Transcript Editor",
+    "version": "0.1.0",
+    "manufacturer": "vvozmitsel",
+    "description": "Edit dialogue by editing text: transcribe a track with Deepgram, then delete words, ums and long pauses as single undo steps.",
+    "sdk_version": "3.1.1.42",
+    "min_luna_version": "3.1.1",
+    "engines": ["luna"],
+    "html": "index.html",
+    "target": "editor"
+}

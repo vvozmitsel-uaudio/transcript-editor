@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Transcript Editor</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #151515; --panel: #1e1e1e; --raised: #262626; --line: #323232;
+      --text: #ddd; --dim: #8a8a8a; --faint: #5c5c5c; --accent: #F7C449; --ok: #7bc47f; --err: #ef6b5b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 13px -apple-system, Helvetica, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    button, input, select { font: inherit; color: var(--text); background: var(--raised); border: 1px solid #444; border-radius: 6px; }
+    button { padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+    button:hover:not(:disabled) { border-color: #666; }
+    button:disabled { opacity: .4; cursor: default; }
+    button.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+    input, select { padding: 4px 8px; }
+    input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 7px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+    header h1 { font-size: 13px; margin: 0 4px 0 0; white-space: nowrap; }
+    header h1 span { color: var(--accent); }
+    #track { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #coverage { color: var(--dim); white-space: nowrap; }
+    .sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+    .grow { flex: 1; }
+    #find { width: 150px; }
+    #key-state { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--raised); white-space: nowrap; }
+    #key-state[data-kind=ok] { color: var(--ok); }
+    #key-state[data-kind=error] { color: var(--err); }
+
+    main { flex: 1; overflow: auto; padding: 10px 16px 24px; line-height: 1.75; font-size: 15px; }
+    main .empty { color: var(--dim); font-size: 13px; line-height: 1.5; max-width: 640px; padding-top: 6px; }
+    main .empty b { color: var(--text); }
+    .para { margin: 0 0 10px; }
+    .spk { display: inline-block; font-size: 11px; line-height: 1; padding: 3px 7px; margin-right: 8px; border-radius: 9px; background: var(--raised); color: var(--dim); user-select: none; -webkit-user-select: none; vertical-align: 2px; }
+    .spk[data-s="1"] { color: #8fc3ef; } .spk[data-s="2"] { color: #c79bf0; } .spk[data-s="3"] { color: #8fe0b0; }
+    .w { cursor: text; border-radius: 3px; padding: 1px 0; }
+    .w:hover { background: #2a2a2a; }
+    .w.filler { color: var(--accent); text-decoration: underline dotted; text-underline-offset: 4px; }
+    .w.unsure { text-decoration: underline wavy #6a5a3a; text-underline-offset: 4px; }
+    .w.now { background: #3a3220; box-shadow: 0 0 0 1px #6b5a2a; }
+    .w.hit { background: #2c4a63; }
+    .w.hit.current { background: #3f6e95; }
+    .gap { color: var(--faint); font-size: 11px; user-select: none; -webkit-user-select: none; }
+    .gap.long { color: var(--accent); }
+    ::selection { background: #7a3b34; color: #fff; }
+
+    footer { display: flex; align-items: center; gap: 10px; padding: 5px 12px; background: var(--panel); border-top: 1px solid var(--line); min-height: 30px; }
+    #status { flex: 1; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #status[data-kind=ok] { color: var(--ok); }
+    #status[data-kind=error] { color: var(--err); }
+    #status.flash { animation: flash 1.2s ease-out; }
+    @keyframes flash { from { background: #4a3d1c; } to { background: transparent; } }
+    #progress { width: 140px; accent-color: var(--accent); }
+    #hint { color: var(--faint); font-size: 11px; white-space: nowrap; }
+
+    /* The editor panel is wide and short: the dialog takes the panel's height, keeps its title
+       bar and Done in view, and lays its sections out in columns when there is room. */
+    dialog { background: var(--panel); color: var(--text); border: 1px solid #444; border-radius: 10px; width: min(1000px, calc(100vw - 16px)); max-height: calc(100vh - 16px); padding: 0; overflow: auto; }
+    dialog::backdrop { background: rgba(0,0,0,.6); }
+    dialog header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid #333; }
+    dialog header h2 { flex: 1; }
+    dialog .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 24px; padding: 2px 14px 12px; }
+    dialog h2 { margin: 0; font-size: 14px; }
+    dialog h3 { margin: 10px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
+    dialog p { color: var(--dim); line-height: 1.45; margin: 6px 0; }
+    dialog a { color: var(--accent); }
+    dialog .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    dialog .row label { min-width: 150px; color: var(--dim); }
+    dialog input[type=number] { width: 70px; }
+    #key-input { width: 100%; margin: 6px 0; }
+    dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+    dialog .actions .spacer { flex: 1; }
+    #key-msg { min-height: 1.3em; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Transcript <span>Editor</span></h1>
+    <span id="track">Connecting…</span>
+    <span id="coverage"></span>
+    <button id="transcribe" class="primary" type="button" disabled>Transcribe</button>
+    <span class="sep"></span>
+    <button id="cut" type="button" disabled title="Delete the selected words from the audio (Delete key)">Cut selection</button>
+    <button id="fillers" type="button" disabled title="Cut every um, uh and hmm">Remove fillers</button>
+    <button id="pauses" type="button" disabled title="Shorten long silences between words (see Settings)">Tighten pauses</button>
+    <button id="markers" type="button" disabled title="Add a LUNA marker where each speaker starts">Speaker markers</button>
+    <span class="sep"></span>
+    <input id="find" type="search" placeholder="Find…" aria-label="Find in transcript" autocomplete="off" spellcheck="false">
+    <span class="grow"></span>
+    <button id="copy-text" type="button" disabled title="Copy the transcript as text">Copy text</button>
+    <button id="copy-srt" type="button" disabled title="Copy captions (.srt) timed to the session">Copy SRT</button>
+    <span id="key-state"></span>
+    <button id="open-settings" type="button">Settings</button>
+  </header>
+
+  <main id="words"><div class="empty">Connecting to LUNA…</div></main>
+
+  <footer>
+    <span id="status">Starting…</span>
+    <span id="hint">Select words, then press Delete · Click a word to move the playhead · ⌘Z undoes in LUNA</span>
+    <progress id="progress" hidden></progress>
+    <button id="cancel" type="button" hidden>Cancel</button>
+  </footer>
+
+  <input id="file" type="file" accept="audio/*,.wav,.aif,.aiff,.mp3,.m4a,.flac" hidden>
+
+  <dialog id="settings">
+    <form id="settings-form" method="dialog">
+      <header>
+        <h2>Settings</h2>
+        <button id="close-settings" type="button" class="primary" title="Close (Esc)">Done</button>
+      </header>
+      <div class="cols">
+      <section>
+      <h3>Deepgram API key</h3>
+      <p>Transcription uses <a id="dg-link" href="https://console.deepgram.com/signup">Deepgram</a> with your own API key.
+        New accounts get free credit. In the Deepgram console, open <b>API Keys</b>, create a key and paste it here.</p>
+      <input id="key-input" type="password" placeholder="Paste your Deepgram API key" autocomplete="off" spellcheck="false">
+      <p id="storage-note"></p>
+      <div id="key-msg"></div>
+      <div class="row"><button id="save-key" type="button" class="primary">Save key</button><button id="remove-key" type="button">Remove key</button></div>
+      </section>
+
+      <section>
+      <h3>Transcription</h3>
+      <p>Transcribe uploads the track's audio files to Deepgram. Transcripts are saved in the session and never leave it.</p>
+      <div class="row"><label for="language">Language</label>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="multi">Multilingual (auto)</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="nl">Dutch</option>
+          <option value="ja">Japanese</option>
+        </select>
+      </div>
+
+      <h3>This track's transcript</h3>
+      <p id="transcript-info"></p>
+      <div class="row"><button id="forget" type="button">Discard transcript</button></div>
+      </section>
+
+      <section>
+      <h3>Editing</h3>
+      <div class="row"><label for="scope">Cuts apply to</label>
+        <select id="scope">
+          <option value="track">This track only</option>
+          <option value="all">All audio tracks (keeps them in sync)</option>
+        </select>
+      </div>
+      <div class="row"><label for="fade-ms">Crossfade at each cut</label><input id="fade-ms" type="number" min="0" max="200" step="1"> ms</div>
+      <div class="row"><label for="pause-over">Tighten pauses longer than</label><input id="pause-over" type="number" min="0.2" max="10" step="0.1"> s</div>
+      <div class="row"><label for="pause-keep">…down to</label><input id="pause-keep" type="number" min="0" max="5" step="0.05"> s</div>
+      </section>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="vendor/luna.global.js"></script>
+  <!-- The bundle npm run build writes from src/: one classic script, never a module script. -->
+  <script src="dist/main.js"></script>
+</body>
+</html>
